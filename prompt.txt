@@ -1,0 +1,5 @@
+Generate a new webflux application saved to my projects directory that implements a processing pipeline that is activated in the following ways:
+1) Polling an oracle table called REVIEW_QUEUE mapped with JPA. The table must have a column called REVIEW_MESSAGE containing instructions as serialized JSON. and another column called CLIENT_FK used for partitioning by client. the pipeline  can process up to a certain number of jobs at a time but must only process a single client at once.
+2) Polling a kafka topic with the same structure as REVIEW_QUEUE, but deserialized into its own class object distinct from the oracle polling
+
+In both cases, each row or kafka event must activate a different handler method depending on the value of the REVIEW_TYPE field
