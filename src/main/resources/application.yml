@@ -43,6 +43,16 @@ review:
       enabled: true
       topic: review-queue-topic
 
+# JDBC Polling Publisher Configuration
+publisher:
+  polling:
+    # Default polling interval in milliseconds for all JDBC publishers
+    interval-ms: 5000
+    # Maximum number of concurrent processing operations
+    max-concurrency: 10
+    # Whether to continue processing when an error occurs
+    continue-on-error: true
+
 # Server Configuration
 server:
   port: 8080
