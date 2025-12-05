@@ -62,11 +62,6 @@ public class JdbcPollingPartitionedPublisher<T extends Partitionable> {
      */
     private final Consumer<List<T>> batchProcessor;
 
-    /**
-     * Optional function to filter items before emitting.
-     * Return true to emit the item, false to skip it.
-     */
-    private final Function<T, Boolean> itemFilter;
 
     /**
      * Whether to continue polling when an error occurs.
@@ -106,7 +101,7 @@ public class JdbcPollingPartitionedPublisher<T extends Partitionable> {
      *
      * @return A Flux that emits items from a single poll
      */
-    public Flux<T> pollOnce() {
+    public Flux<T extends Partitionable> pollOnce() {
         return pollDatabase();
     }
 
@@ -115,21 +110,12 @@ public class JdbcPollingPartitionedPublisher<T extends Partitionable> {
      * If partitioning is enabled, items are grouped by client ID and
      * only processed if the partition lock can be acquired.
      */
-    private Flux<T> pollDatabase() {
+    private Flux<T extends Partitionable> pollDatabase() {
         return Mono.fromCallable(pollFunction)
                 .subscribeOn(jdbcScheduler)
-                .doOnNext(batch -> {
-                    if (!batch.isEmpty()) {
-                        log.debug("Polled {} items from database", batch.size());
-                    }
-                    if (batchProcessor != null) {
-                        batchProcessor.accept(batch);
-                    }
-                })
                 .flatMapMany(batch -> {
                     return processWithPartitioning(batch);
                 })
-                .filter(item -> itemFilter == null || itemFilter.apply(item))
                 .onErrorResume(error -> {
                     log.error("Error polling database", error);
                     if (errorHandler != null) {
@@ -144,7 +130,7 @@ public class JdbcPollingPartitionedPublisher<T extends Partitionable> {
      * Only emits items for partitions that can acquire a lock.
      * Partition keys are extracted from items using the Partitionable interface.
      */
-    private Flux<T> processWithPartitioning(List<T extends Partitionable> items) {
+    private Flux<T extends Partitionable> processWithPartitioning(List<T extends Partitionable> items) {
         return Flux.fromIterable(items)
                 .groupBy(Partitionable::getPartitionKey)
                 .flatMap(partitionGroup -> {
