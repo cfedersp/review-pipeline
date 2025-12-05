@@ -1,5 +1,6 @@
 package com.example.reviewpipeline.entity;
 
+import com.example.reviewpipeline.publisher.Partitionable;
 import jakarta.persistence.*;
 import lombok.Data;
 import java.time.LocalDateTime;
@@ -7,7 +8,7 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "REVIEW_QUEUE")
 @Data
-public class ReviewQueue {
+public class ReviewQueue implements Partitionable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -35,5 +36,10 @@ public class ReviewQueue {
     @PrePersist
     protected void onCreate() {
         createdDate = LocalDateTime.now();
+    }
+
+    @Override
+    public String getPartitionKey() {
+        return clientFk;
     }
 }

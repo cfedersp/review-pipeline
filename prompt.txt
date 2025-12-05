@@ -3,3 +3,6 @@ Generate a new webflux application saved to my projects directory that implement
 2) Polling a kafka topic with the same structure as REVIEW_QUEUE, but deserialized into its own class object distinct from the oracle polling
 
 In both cases, each row or kafka event must activate a different handler method depending on the value of the REVIEW_TYPE field
+
+
+Create a new class that implements a jdbc polling webflux publisher
