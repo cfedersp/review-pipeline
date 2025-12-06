@@ -9,12 +9,14 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class KafkaReviewMessage implements Partitionable {
-    private String reviewType;
     private String clientFk;
+    private String accountId;
+    private String operation;
+    private String reviewType;
     private String reviewMessage;
 
     @Override
-    public String getPartitionKey() {
+    public String getClientId() {
         return clientFk;
     }
 }

@@ -74,6 +74,7 @@ public class ParallelPublisherProcessor<T extends Partitionable> {
 
     /**
      * Starts processing items from all publishers in parallel.
+     * Items are split into separate pipelines based on accountId.
      * Returns a Flux that emits items as they are processed.
      *
      * @return A Flux that emits processed items
@@ -92,12 +93,51 @@ public class ParallelPublisherProcessor<T extends Partitionable> {
                     if (preProcessor != null) {
                         preProcessor.accept(item);
                     }
-                    log.debug("Received item from partition: {}", item.getPartitionKey());
+                    log.debug("Received item from partition: {} (accountId: {})",
+                            item.getPartitionKey(), item.getAccountId());
                 })
-                .flatMap(item -> processItem(item)
-                        .thenReturn(item)
-                        .onErrorResume(error -> handleError(item, error)),
-                    maxConcurrency)
+                .groupBy(Partitionable::getAccountId)
+                .flatMap(accountGroup -> {
+                    String accountId = accountGroup.key();
+                    log.info("Created separate pipeline for accountId: {}", accountId);
+
+                    return accountGroup
+                            .groupBy(item -> {
+                                // groupBy can return any object as long as that object correctly implements the equals() and hashCode(). Lets use String.
+                                // For download operations, create a unique group key per accountId+operation
+                                // This ensures only 1 download operation per account is processed at a time
+                                if ("download".equalsIgnoreCase(item.getOperation())) {
+                                    return accountId + ":" + item.getOperation();
+                                }
+                                // For other operations, use a unique key per item to allow parallel processing
+                                return accountId + ":" + item.getOperation() + ":" + System.nanoTime();
+                            })
+                            .flatMap(operationGroup -> {
+                                String groupKey = operationGroup.key();
+
+                                if (groupKey.contains(":download")) {
+                                    log.debug("Created serialized download pipeline for: {}", groupKey);
+                                    // Process download operations sequentially (concurrency = 1)
+                                    return operationGroup
+                                            .flatMap(item -> processItem(item)
+                                                    .thenReturn(item)
+                                                    .onErrorResume(error -> handleError(item, error)),
+                                                1); // Only 1 download at a time per account
+                                } else {
+                                    // Process non-download operations in parallel
+                                    return operationGroup
+                                            .flatMap(item -> processItem(item)
+                                                    .thenReturn(item)
+                                                    .onErrorResume(error -> handleError(item, error)),
+                                                maxConcurrency);
+                                }
+                            })
+                            .doOnSubscribe(s ->
+                                log.info("Started processing pipeline for accountId: {}", accountId))
+                            .doFinally(signalType ->
+                                log.info("Pipeline for accountId {} completed with signal: {}",
+                                        accountId, signalType));
+                })
                 .subscribeOn(processingScheduler);
     }
 

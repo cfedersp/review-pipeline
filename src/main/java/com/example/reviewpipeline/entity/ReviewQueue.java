@@ -18,6 +18,12 @@ public class ReviewQueue implements Partitionable {
     @Column(name = "CLIENT_FK", nullable = false)
     private String clientFk;
 
+    @Column(name = "ACCOUNT_ID", nullable = false)
+    private String accountId;
+
+    @Column(name = "OPERATION", nullable = false)
+    private String operation;
+
     @Column(name = "REVIEW_TYPE", nullable = false)
     private String reviewType;
 
@@ -39,7 +45,7 @@ public class ReviewQueue implements Partitionable {
     }
 
     @Override
-    public String getPartitionKey() {
+    public String getClientId() {
         return clientFk;
     }
 }
